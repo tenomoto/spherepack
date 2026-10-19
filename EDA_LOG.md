@@ -104,3 +104,22 @@ loaded via a namespace (and not attached):
 - On macOS 27.0.1 (`Darwin Kernel Version 27.0.0`) with MacPorts `gfortran-mp-14` (`aarch64-apple-darwin25`), setting `MACOSX_DEPLOYMENT_TARGET=26.0` prevents GCC 14's Darwin kernel version fallback (`27 - 9 = 18.0`) when invoking the Clang assembler.
 - `R CMD check --no-manual spherepack_0.1.0.tar.gz` passed with `Status: OK` (0 errors, 0 warnings, 0 notes), including vignette building and re-building checks.
 
+---
+
+## 2026-10-19: Configuration of 2-Clause BSD and UCAR SPHEREPACK Licenses
+
+### 1. Objectives and Contents of the Experiment
+
+- **Objective**: Configure the package license using the 2-Clause BSD License (`BSD_2_clause + file LICENSE`) for the R interface while preserving and documenting the upstream UCAR permissive BSD-style license of SPHEREPACK 3.2 (`https://github.com/NCAR/NCAR-Classic-Libraries-for-Geophysics/blob/main/SpherePack/LICENSE`).
+
+### 2. Generated File Names and Main Functions
+
+- `DESCRIPTION`: Updated `License: BSD_2_clause + file LICENSE` and added `cph` roles for `Takeshi Enomoto` and `University Corporation for Atmospheric Research`.
+- `LICENSE`: Standard R/CRAN `BSD_2_clause` template file specifying `YEAR: 1998-2011, 2026` and `COPYRIGHT HOLDER: University Corporation for Atmospheric Research, Takeshi Enomoto`.
+- `inst/COPYRIGHTS`: Installed copyright and license notice containing both the 2-Clause BSD License for the R package and the verbatim UCAR SPHEREPACK 3.2 license.
+- `LICENSE.md`: Top-level human-readable license document (added `^LICENSE\.md$` to `.Rbuildignore`).
+
+### 3. Obtained Knowledge and Interpretation of Results
+
+- The upstream NCAR SPHEREPACK 3.2 license (`Copyright (c) 1998-2011 the University Corporation for Atmospheric Research ("UCAR")`) is a permissive BSD-style license permitting redistribution and use in source and binary forms, with or without modification, making it fully compatible with the 2-Clause BSD License.
+- `R CMD check --no-manual spherepack_0.1.0.tar.gz` verified `DESCRIPTION`, `LICENSE`, and `inst/COPYRIGHTS` with `Status: OK` (0 errors, 0 warnings, 0 notes).

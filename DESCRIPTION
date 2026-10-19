@@ -3,9 +3,10 @@ Type: Package
 Title: Spherical Harmonic Analysis, Synthesis, and Differential Operators
 Version: 0.1.0
 Authors@R: c(
-    person("Takeshi", "Enomoto", role = c("aut", "cre"), email = "takeshi.enomoto@gmail.com"),
+    person("Takeshi", "Enomoto", role = c("aut", "cre", "cph"), email = "takeshi.enomoto@gmail.com"),
     person("John", "Adams", role = "aut", comment = "SPHEREPACK 3.2 author"),
-    person("Paul", "Swarztrauber", role = "aut", comment = "SPHEREPACK 3.2 author")
+    person("Paul", "Swarztrauber", role = "aut", comment = "SPHEREPACK 3.2 author"),
+    person("University Corporation for Atmospheric Research", role = "cph", comment = "SPHEREPACK 3.2 copyright holder")
   )
 Description: Provides an R interface to the 'SPHEREPACK' 3.2 Fortran 77 library
   (Adams and Swarztrauber, 1999) for spherical harmonic analysis and synthesis
@@ -15,7 +16,7 @@ Description: Provides an R interface to the 'SPHEREPACK' 3.2 Fortran 77 library
   global equally spaced (fixed) and Gaussian grids. Function names and behavior
   are compatible with the NCAR Command Language (NCL) spherical harmonic routines
   while leveraging the column-major array layout shared between Fortran and R.
-License: GPL-3
+License: BSD_2_clause + file LICENSE
 Encoding: UTF-8
 NeedsCompilation: yes
 Suggests:
