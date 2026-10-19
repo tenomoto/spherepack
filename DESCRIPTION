@@ -18,4 +18,8 @@ Description: Provides an R interface to the 'SPHEREPACK' 3.2 Fortran 77 library
 License: GPL-3
 Encoding: UTF-8
 NeedsCompilation: yes
+Suggests:
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
 Config/roxygen2/version: 8.1.0

@@ -1,0 +1,301 @@
+---
+title: "Introduction to spherepack: Spherical Harmonic Analysis, Synthesis, and Differential Operators"
+author: "Takeshi Enomoto"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to spherepack: Spherical Harmonic Analysis, Synthesis, and Differential Operators}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.2
+)
+```
+
+## 1. Overview
+
+`spherepack` provides a 64-bit double-precision R interface to the Fortran 77 **SPHEREPACK 3.2** library (Adams and Swarztrauber, 1999) for spherical harmonic analysis, synthesis, differential operators, inverse operators, spectral truncation, and exponential tapering on global spherical grids.
+
+All 88 exported functions are designed to be compatible with the spherical harmonic routines of the **NCAR Command Language (NCL)** while taking advantage of the column-major memory layout shared between Fortran and R.
+
+```{r init}
+seed <- 514
+set.seed(seed)
+library(spherepack)
+```
+
+### 1.1 Grid Conventions (`f` vs. `g`)
+
+SPHEREPACK supports two global grid types:
+
+1. **Equally spaced (fixed) grids** (functions ending in `f`, `F`, `ec`, or `eC`):
+   - Latitudes span from the South Pole ($-90^\circ$) to the North Pole ($+90^\circ$) with uniform spacing $\Delta\phi = \pi / (\text{nlat} - 1)$.
+   - Longitudes span $[0, 2\pi - \Delta\lambda]$ with $\Delta\lambda = 2\pi / \text{nlon}$ (no cyclic wrap-around point).
+2. **Gaussian grids** (functions ending in `g`, `G`, `gc`, or `gC`):
+   - Latitudes are the zeros of the Legendre polynomial $P_{\text{nlat}}(\sin\phi)$ ordered from South to North, excluding the poles, computed via `gaqd(nlat)`.
+   - Longitudes are equally spaced on $[0, 2\pi - \Delta\lambda]$ with $\Delta\lambda = 2\pi / \text{nlon}$.
+
+### 1.2 Column-Major Array Ordering
+
+- **Spatial arrays**: All spatial fields have dimensions `(nlon, nlat, ...)`, where the first dimension is longitude (`nlon`), the second is latitude (`nlat`, ordered South-to-North), and any trailing dimensions represent vertical levels, time steps, or ensemble members. Because R and Fortran use column-major order while NCL uses row-major order `(..., nlat, nlon)`, the in-memory layout is identical with zero transposition overhead.
+- **Spectral coefficient arrays**:
+  - Scalar harmonic coefficients (`a`, `b`) have dimensions `(N, nlat, ...)` where $N = \min(\text{nlat}, \lfloor(\text{nlon} + 2)/2\rfloor)$.
+  - Vector harmonic coefficients (`br`, `bi`, `cr`, `ci`) have dimensions `(N, nlat, ...)` where $N = \min(\text{nlat}, \lfloor(\text{nlon} + 1)/2\rfloor)$.
+  - Row index $m + 1$ corresponds to zonal wavenumber $m = 0, \dots, N - 1$, and column index $n + 1$ corresponds to total wavenumber (degree) $n = m, \dots, \text{nlat} - 1$. Entries with $n < m$ are zero.
+
+### 1.3 Function Naming Variants
+
+Following NCL conventions, up to three interfaces are provided for each operator:
+
+- **Lowercase procedural style** (e.g., `shaec()`, `uv2vrdvf()`, `uv2sfvpg()`): returns a named `list` when an operation produces multiple arrays (such as `list(a = ..., b = ...)` or `list(vr = ..., dv = ...)`).
+- **Uppercase functional style** (e.g., `shaeC()`, `uv2vrdvF()`, `uv2dvF()`): returns a single numeric array (stacking multiple output fields along a trailing dimension of size 2 or 4).
+- **`_Wrap` variants** (e.g., `uv2dvF_Wrap()`, `ilapsG_Wrap()`, `dv2uvG_Wrap()`): preserve metadata attributes (`units`, `long_name`, and `dimnames`) from the input array.
+
+---
+
+## 2. Sphere Radius and Gaussian Grids
+
+By default, differential and inverse operators use the mean Earth radius $R = 6.37122 \times 10^6\text{ m}$. You can query or override this radius (for example, setting $R = 1$ for non-dimensional analytical tests or adjusting for another planet) using `get_sphere_radius()` and `set_sphere_radius()`:
+
+```{r radius_and_gaqd}
+r_earth <- get_sphere_radius()
+r_earth
+
+# Generate a T21-like 64 x 32 Gaussian grid
+nlon <- 64L
+nlat <- 32L
+g <- gaqd(nlat)
+str(g)
+
+# Gaussian quadrature weights integrate to 2.0 over [-1, 1]
+sum(g$wts)
+```
+
+---
+
+## 3. Scalar Harmonic Analysis, Synthesis, and Spectral Filtering
+
+Consider a smooth scalar field on the unit sphere composed of a large-scale zonal-plus-wave pattern ($n = 1$ and $n = 2$) superposed with a smaller-scale wave ($m = 6, n = 8$):
+
+$$\psi(\lambda, \phi) = \sin\phi + \cos^2\phi \cos(2\lambda) + 0.35\, P_8^6(\sin\phi)\cos(6\lambda)$$
+
+Let us construct this field on the $64 \times 32$ Gaussian grid, perform spherical harmonic analysis with `shagc()`, and reconstruct it with `shsgc()`:
+
+```{r scalar_analysis}
+set_sphere_radius(1.0)
+
+lon_deg <- (0:(nlon - 1L)) * (360 / nlon)
+lat_deg <- g$lat
+lon <- lon_deg * pi / 180
+lat <- lat_deg * pi / 180
+
+# Base field (n = 1 and n = 2)
+psi_large <- outer(lon, lat, function(lam, phi) {
+  sin(phi) + (cos(phi)^2) * cos(2 * lam)
+})
+
+# Add a higher-wavenumber mode (m = 6, n = 8) directly in spectral space
+ab <- shagc(psi_large)
+ab$a[7L, 9L] <- 0.25 # m = 6 (row 7), n = 8 (col 9)
+psi <- shsgc(ab$a, ab$b, nlon = nlon)
+
+# Verify round-trip synthesis accuracy
+ab_full <- shagc(psi)
+psi_rec <- shsgc(ab_full$a, ab_full$b, nlon = nlon)
+max(abs(psi_rec - psi))
+```
+
+### 3.1 Triangular Truncation and Exponential Tapering
+
+We can remove all total wavenumbers $n > 2$ using `tri_trunc()`, which recovers `psi_large` to machine precision, or smoothly damp high wavenumbers using `exp_tapersh()`:
+
+```{r truncation_and_tapering}
+# Triangular truncation at T = 2 removes the (m = 6, n = 8) wave
+ab_t2 <- tri_trunc(ab_full$a, ab_full$b, T = 2L)
+psi_t2 <- shsgc(ab_t2$a, ab_t2$b, nlon = nlon)
+max(abs(psi_t2 - psi_large))
+
+# Isotropic exponential tapering (Sardeshmukh and Hoskins, 1984)
+wgts <- exp_tapersh_wgts(M = nlat, N = 6, r = 2)
+ab_tap <- exp_tapersh(ab_full$a, ab_full$b, N = 6, r = 2)
+psi_tap <- shsgc(ab_tap$a, ab_tap$b, nlon = nlon)
+```
+
+```{r fig_scalar_filtering, fig.height = 3.8}
+old_par <- par(mfrow = c(1, 2), mar = c(4, 4, 2.5, 1))
+contour(lon_deg, lat_deg, psi,
+        nlevels = 12, col = "steelblue4",
+        xlab = "Longitude (deg)", ylab = "Latitude (deg)",
+        main = "Full Scalar Field (n = 1, 2, 8)")
+contour(lon_deg, lat_deg, psi_t2,
+        nlevels = 12, col = "firebrick",
+        xlab = "Longitude (deg)", ylab = "Latitude (deg)",
+        main = "Triangular Truncation (T = 2)")
+par(old_par)
+```
+
+---
+
+## 4. Scalar Gradient, Laplacian, and Inverse Operators
+
+For the analytical field $\psi_{\text{large}}(\lambda, \phi) = \sin\phi + \cos^2\phi\cos(2\lambda)$ on the unit sphere ($R = 1$):
+
+- The spherical gradient components are:
+  $$g_\lambda = \frac{1}{\cos\phi}\frac{\partial \psi_{\text{large}}}{\partial \lambda} = -2\cos\phi\sin(2\lambda), \qquad g_\phi = \frac{\partial \psi_{\text{large}}}{\partial \phi} = \cos\phi - 2\sin\phi\cos\phi\cos(2\lambda)$$
+- Since $\sin\phi = P_1^0(\sin\phi)$ has Laplacian eigenvalue $-1(1+1) = -2$ and $\cos^2\phi\cos(2\lambda) = \frac{1}{3}P_2^2(\sin\phi)\cos(2\lambda)$ has eigenvalue $-2(2+1) = -6$, the exact scalar Laplacian is:
+  $$\nabla^2 \psi_{\text{large}} = -2\sin\phi - 6\cos^2\phi\cos(2\lambda)$$
+
+Let us compute the gradient (`gradsg()`) and scalar Laplacian (`lapsg()`), compare them against the exact formulas, and invert them back (`igradsg()`, `ilapsg()`):
+
+```{r scalar_operators}
+# Analytic gradient and Laplacian
+gx_exact <- outer(lon, lat, function(lam, phi) -2 * cos(phi) * sin(2 * lam))
+gy_exact <- outer(lon, lat, function(lam, phi) cos(phi) - 2 * sin(phi) * cos(phi) * cos(2 * lam))
+lap_exact <- outer(lon, lat, function(lam, phi) -2 * sin(phi) - 6 * (cos(phi)^2) * cos(2 * lam))
+
+# Spherical harmonic gradient and inverse gradient
+grad_num <- gradsg(psi_large)
+c(max_err_gx = max(abs(grad_num$gzx - gx_exact)),
+  max_err_gy = max(abs(grad_num$gzy - gy_exact)),
+  max_err_igrad = max(abs(igradsg(grad_num$gzx, grad_num$gzy) - psi_large)))
+
+# Spherical harmonic scalar Laplacian and inverse Laplacian
+lap_num <- lapsg(psi_large)
+c(max_err_lap = max(abs(lap_num - lap_exact)),
+  max_err_ilap = max(abs(ilapsg(lap_num) - psi_large)))
+```
+
+---
+
+## 5. Vector Harmonics and Helmholtz Decomposition of Winds
+
+Any horizontal wind field $\mathbf{v} = (u, v)$ on the sphere can be decomposed into a non-divergent (rotational) component $\mathbf{v}_\psi$ governed by the streamfunction $\psi$ and an irrotational (divergent) component $\mathbf{v}_\chi$ governed by the velocity potential $\chi$:
+
+$$\mathbf{v} = \mathbf{v}_\psi + \mathbf{v}_\chi = \hat{\mathbf{k}} \times \nabla\psi + \nabla\chi$$
+
+where the relative vorticity $\zeta$ and horizontal divergence $\delta$ satisfy Poisson's equation on the sphere:
+
+$$\zeta = \nabla^2 \psi, \qquad \delta = \nabla^2 \chi$$
+
+Let us restore Earth's radius $R = 6.37122 \times 10^6\text{ m}$, synthesize a realistic planetary-scale wind field from a prescribed streamfunction $\psi$ and velocity potential $\chi$ using `sfvp2uvg()`, and then perform a full Helmholtz decomposition:
+
+```{r helmholtz_decomposition}
+set_sphere_radius(r_earth)
+
+# Define streamfunction (m^2/s) and velocity potential (m^2/s) on the Earth sphere
+sf_true <- 1.0e7 * psi_large
+vp_true <- 0.4e7 * outer(lon, lat, function(lam, phi) {
+  sin(2 * phi) * sin(lam)
+})
+
+# Synthesize total wind (u, v) in m/s from (sf, vp)
+uv <- sfvp2uvg(sf_true, vp_true)
+
+# Compute relative vorticity (vr) and divergence (dv) in s^-1 from (u, v)
+vrdv <- uv2vrdvg(uv$u, uv$v)
+
+# Recover streamfunction and velocity potential from (u, v)
+sfvp_rec <- uv2sfvpg(uv$u, uv$v)
+c(rel_err_sf = max(abs(sfvp_rec$sf - sf_true)) / max(abs(sf_true)),
+  rel_err_vp = max(abs(sfvp_rec$vp - vp_true)) / max(abs(vp_true)))
+
+# Decompose into rotational wind (vr2uvg) and divergent wind (dv2uvg)
+uv_rot <- vr2uvg(vrdv$vr)
+uv_div <- dv2uvg(vrdv$dv)
+
+# Verify that rotational + divergent wind equals total wind
+c(max_err_u = max(abs((uv_rot$u + uv_div$u) - uv$u)),
+  max_err_v = max(abs((uv_rot$v + uv_div$v) - uv$v)))
+```
+
+We can visualize the streamfunction with the rotational wind vectors (which blow parallel to streamfunction contours) and the velocity potential with the divergent wind vectors (which blow perpendicular to velocity potential contours, from convergence to divergence):
+
+```{r fig_helmholtz, fig.height = 4.2}
+old_par <- par(mfrow = c(1, 2), mar = c(4, 4, 2.5, 1))
+
+# Subsample grid for wind arrows
+ix <- seq(1L, nlon, by = 4L)
+iy <- seq(2L, nlat - 1L, by = 2L)
+lon_sub <- rep(lon_deg[ix], times = length(iy))
+lat_sub <- rep(lat_deg[iy], each = length(ix))
+
+# Panel 1: Streamfunction and rotational wind
+contour(lon_deg, lat_deg, sfvp_rec$sf * 1e-7,
+        nlevels = 10, col = "navy",
+        xlab = "Longitude (deg)", ylab = "Latitude (deg)",
+        main = "Streamfunction & Rotational Wind")
+arrows(lon_sub, lat_sub,
+       lon_sub + as.vector(uv_rot$u[ix, iy]) * 2.5,
+       lat_sub + as.vector(uv_rot$v[ix, iy]) * 2.5,
+       length = 0.04, col = "firebrick")
+
+# Panel 2: Velocity potential and divergent wind
+contour(lon_deg, lat_deg, sfvp_rec$vp * 1e-7,
+        nlevels = 10, col = "darkgreen",
+        xlab = "Longitude (deg)", ylab = "Latitude (deg)",
+        main = "Velocity Potential & Divergent Wind")
+arrows(lon_sub, lat_sub,
+       lon_sub + as.vector(uv_div$u[ix, iy]) * 4.0,
+       lat_sub + as.vector(uv_div$v[ix, iy]) * 4.0,
+       length = 0.04, col = "darkorange3")
+
+par(old_par)
+```
+
+---
+
+## 6. Multi-Dimensional Array Support and `_Wrap` Metadata Preservation
+
+All functions in `spherepack` automatically broadcast over arbitrary trailing dimensions such as vertical pressure levels and time steps `(nlon, nlat, nlev, ntime)`. In addition, `_Wrap` functions preserve attributes (`dimnames`, `units`, `long_name`) attached to the input arrays:
+
+```{r multidim_and_wrap}
+# Create a 3D wind array: (nlon = 64, nlat = 32, nlev = 2)
+u_3d <- array(c(uv$u, 1.5 * uv$u), dim = c(nlon, nlat, 2L),
+              dimnames = list(lon = round(lon_deg, 1),
+                              lat = round(lat_deg, 1),
+                              lev = c("850hPa", "500hPa")))
+v_3d <- array(c(uv$v, 1.5 * uv$v), dim = dim(u_3d), dimnames = dimnames(u_3d))
+attr(u_3d, "units") <- "m/s"
+
+div_3d <- uv2dvG_Wrap(u_3d, v_3d)
+dim(div_3d)
+dimnames(div_3d)$lev
+```
+
+---
+
+## 7. Summary of Exported Functions (88 Functions)
+
+| Category | Fixed Grid (`f` / `F` / `ec`) | Gaussian Grid (`g` / `G` / `gc`) |
+| :--- | :--- | :--- |
+| **Sphere Radius & Quadrature** | `get_sphere_radius`, `set_sphere_radius` | `gaqd` |
+| **Scalar Analysis** | `shaec`, `shaeC` | `shagc`, `shagC` |
+| **Scalar Synthesis** | `shsec`, `shseC` | `shsgc`, `shsgC`, `shsgc_R42`, `shsgc_R42_Wrap` |
+| **Vector Analysis** | `vhaec`, `vhaeC` | `vhagc`, `vhagC` |
+| **Vector Synthesis** | `vhsec`, `vhseC` | `vhsgc`, `vhsgC` |
+| **Divergence from Wind** | `uv2dvf`, `uv2dvF`, `uv2dvF_Wrap` | `uv2dvg`, `uv2dvG`, `uv2dvG_Wrap` |
+| **Vorticity from Wind** | `uv2vrf`, `uv2vrF`, `uv2vrF_Wrap` | `uv2vrg`, `uv2vrG`, `uv2vrG_Wrap` |
+| **Vorticity & Divergence** | `uv2vrdvf`, `uv2vrdvF` | `uv2vrdvg`, `uv2vrdvG` |
+| **Divergent Wind from Divergence** | `dv2uvf`, `dv2uvF`, `dv2uvF_Wrap` | `dv2uvg`, `dv2uvG`, `dv2uvG_Wrap` |
+| **Rotational Wind from Vorticity** | `vr2uvf`, `vr2uvF`, `vr2uvF_Wrap` | `vr2uvg`, `vr2uvG`, `vr2uvG_Wrap` |
+| **Wind from Vorticity & Divergence** | `vrdv2uvf`, `vrdv2uvF` | `vrdv2uvg`, `vrdv2uvG` |
+| **Streamfunction & Velocity Potential** | `uv2sfvpf`, `uv2sfvpF`, `sfvp2uvf` | `uv2sfvpg`, `uv2sfvpG`, `sfvp2uvg` |
+| **Gradient & Inverse Gradient** | `gradsf`, `igradsf`, `igradsF` | `gradsg`, `igradsg`, `igradsG` |
+| **Latitudinal Derivative of Wind** | `lderuvf` | `lderuvg` |
+| **Scalar Laplacian & Inverse** | `lapsf`, `lapsF`, `ilapsf`, `ilapsF`, `ilapsF_Wrap` | `lapsg`, `lapsG`, `ilapsg`, `ilapsG`, `ilapsG_Wrap` |
+| **Vector Laplacian & Inverse** | `lapvf`, `ilapvf` | `lapvg`, `ilapvg` |
+| **Spectral Truncation & Tapering** | `tri_trunc`, `tri_trunC`, `rhomb_trunc`, `rhomb_trunC`, `exp_tapersh_wgts`, `exp_tapersh`, `exp_tapershC` | *(applies to both grid types)* |
+
+---
+
+## 8. Session Information
+
+```{r session_info}
+sessionInfo()
+```

@@ -76,3 +76,31 @@ attached base packages:
 loaded via a namespace (and not attached):
 [1] compiler_4.5.3
 ```
+
+---
+
+## 2026-10-19: Addition of Package Vignette (`vignettes/spherepack.Rmd`)
+
+### 1. Objectives and Contents of the Experiment
+
+- **Objective**: Provide a comprehensive package vignette introducing `spherepack`'s conventions, mathematical formulations, and geophysical workflows using base R graphics and reproducible random seeds (`seed <- 514; set.seed(seed)`).
+- **Contents**:
+  - Grid types (`f`/`F`/`ec` fixed grids vs. `g`/`G`/`gc` Gaussian grids via `gaqd()`) and zero-copy column-major `(nlon, nlat, ...)` array ordering shared between R/Fortran and row-major NCL.
+  - Scalar harmonic analysis/synthesis (`shagc`, `shsgc`), triangular truncation (`tri_trunc`), and isotropic exponential spectral tapering (`exp_tapersh`, `exp_tapersh_wgts`).
+  - Verification of scalar gradient (`gradsg`, `igradsg`) and scalar Laplacian (`lapsg`, `ilapsg`) against analytical spherical harmonic solutions.
+  - Full Helmholtz wind decomposition on Earth's sphere ($R = 6.37122 \times 10^6\text{ m}$) into streamfunction/rotational wind (`uv2sfvpg`, `vr2uvg`) and velocity potential/divergent wind (`uv2vrdvg`, `dv2uvg`), visualized with base R `contour()` and `arrows()`.
+  - 3D array broadcasting `(nlon, nlat, nlev)` and `_Wrap` metadata preservation (`uv2dvG_Wrap`).
+  - Complete reference table of all 88 exported functions.
+
+### 2. Generated File Names and Main Functions
+
+- `DESCRIPTION`: Added `Suggests: knitr, rmarkdown` and `VignetteBuilder: knitr`.
+- `vignettes/spherepack.Rmd`: Package vignette demonstrating `get_sphere_radius`, `set_sphere_radius`, `gaqd`, `shagc`, `shsgc`, `tri_trunc`, `exp_tapersh_wgts`, `exp_tapersh`, `gradsg`, `igradsg`, `lapsg`, `ilapsg`, `sfvp2uvg`, `uv2vrdvg`, `uv2sfvpg`, `vr2uvg`, `dv2uvg`, and `uv2dvG_Wrap`.
+
+### 3. Obtained Knowledge and Interpretation of Results
+
+- On a $64 \times 32$ Gaussian grid, scalar harmonic round-trip error and $T = 2$ triangular truncation error of a multi-scale wave field were at machine precision ($\sim 10^{-15}$), and spherical gradient/Laplacian operators and their inverses matched exact analytical expressions to $\sim 10^{-14}$.
+- Helmholtz decomposition of a planetary-scale wind field on Earth ($R = 6.37122 \times 10^6\text{ m}$) recovered the streamfunction and velocity potential with relative error $< 10^{-14}$, and the sum of rotational (`vr2uvg`) and divergent (`dv2uvg`) wind components matched the total wind to $\sim 10^{-14}\text{ m s}^{-1}$.
+- On macOS 27.0.1 (`Darwin Kernel Version 27.0.0`) with MacPorts `gfortran-mp-14` (`aarch64-apple-darwin25`), setting `MACOSX_DEPLOYMENT_TARGET=26.0` prevents GCC 14's Darwin kernel version fallback (`27 - 9 = 18.0`) when invoking the Clang assembler.
+- `R CMD check --no-manual spherepack_0.1.0.tar.gz` passed with `Status: OK` (0 errors, 0 warnings, 0 notes), including vignette building and re-building checks.
+
