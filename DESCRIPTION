@@ -1,0 +1,21 @@
+Package: spherepack
+Type: Package
+Title: Spherical Harmonic Analysis, Synthesis, and Differential Operators
+Version: 0.1.0
+Authors@R: c(
+    person("Takeshi", "Enomoto", role = c("aut", "cre"), email = "takeshi.enomoto@gmail.com"),
+    person("John", "Adams", role = "aut", comment = "SPHEREPACK 3.2 author"),
+    person("Paul", "Swarztrauber", role = "aut", comment = "SPHEREPACK 3.2 author")
+  )
+Description: Provides an R interface to the 'SPHEREPACK' 3.2 Fortran 77 library
+  (Adams and Swarztrauber, 1999) for spherical harmonic analysis and synthesis
+  of scalar and vector fields, as well as divergence, vorticity, stream function,
+  velocity potential, gradient, scalar and vector Laplacians, inverse operators,
+  latitudinal derivatives, spectral truncation, and exponential tapering on
+  global equally spaced (fixed) and Gaussian grids. Function names and behavior
+  are compatible with the NCAR Command Language (NCL) spherical harmonic routines
+  while leveraging the column-major array layout shared between Fortran and R.
+License: GPL-3
+Encoding: UTF-8
+NeedsCompilation: yes
+Config/roxygen2/version: 8.1.0
