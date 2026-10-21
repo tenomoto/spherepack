@@ -1146,6 +1146,7 @@ SEXP c_laps(SEXP s_z, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
   double *work = (double *)R_alloc(lwork, sizeof(double));
   int ierror = 0;
 
+  memset(zlapm, 0, n_grid * sizeof(double));
   if (grid_type == 0) {
     int lshsec = calc_lshaec(nlat, nlon);
     double *wshsec = (double *)R_alloc(lshsec, sizeof(double));
