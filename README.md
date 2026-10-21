@@ -32,6 +32,13 @@ Or from within R:
 install.packages(".", repos = NULL, type = "source")
 ```
 
+Alternatively using `pak`:
+
+```r
+install.packages("pak") # skip if already installed
+pak::pak("tenomoto/spherepack")
+```
+
 ## Quickstart
 
 ### 1. Gaussian Grid Generation and Scalar Harmonic Transform
