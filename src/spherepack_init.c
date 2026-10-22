@@ -425,8 +425,10 @@ SEXP c_sha(SEXP s_g, SEXP s_nlon, SEXP s_nlat, SEXP s_nt, SEXP s_grid_type) {
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   if (grid_type == 0) {
@@ -476,8 +478,10 @@ SEXP c_shs(SEXP s_a, SEXP s_b, SEXP s_mdab, SEXP s_nlat, SEXP s_nlon,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   if (grid_type == 0) {
@@ -534,8 +538,10 @@ SEXP c_vha(SEXP s_u, SEXP s_v, SEXP s_nlon, SEXP s_nlat, SEXP s_nt, SEXP s_grid_
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvha = calc_lvhaec(nlat, nlon);
   double *wvha = (double *)R_alloc(lvha, sizeof(double));
   int ierror = 0;
@@ -588,8 +594,10 @@ SEXP c_vhs(SEXP s_br, SEXP s_bi, SEXP s_cr, SEXP s_ci,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvhs = calc_lvhaec(nlat, nlon);
   double *wvhs = (double *)R_alloc(lvhs, sizeof(double));
   int ierror = 0;
@@ -653,8 +661,10 @@ static void analyze_vector(int nlon, int nlat, int nt, int grid_type,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvha = calc_lvhaec(nlat, nlon);
   double *wvha = (double *)R_alloc(lvha, sizeof(double));
   int ierror = 0;
@@ -700,8 +710,10 @@ static void analyze_scalar(int nlon, int nlat, int nt, int grid_type,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   if (grid_type == 0) {
@@ -746,8 +758,10 @@ SEXP c_uv2vrdv_op(SEXP s_u, SEXP s_v, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
   double *gwork = (double *)R_alloc((size_t)nlon * (size_t)nlat, sizeof(double));
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   int lshs = (grid_type == 0) ? calc_lshaec(nlat, nlon) : calc_lshagc(nlat, nlon);
@@ -840,11 +854,16 @@ SEXP c_vrdv2uv_op(SEXP s_vr, SEXP s_dv, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
   double *gwork = (double *)R_alloc((size_t)nlon * (size_t)nlat, sizeof(double));
   double *pertbd = (double *)R_alloc(nt, sizeof(double));
   double *pertbv = (double *)R_alloc(nt, sizeof(double));
+  /* idivec/ivrtec write only one of pertbd/pertbv; keep both deterministic */
+  memset(pertbd, 0, (size_t)nt * sizeof(double));
+  memset(pertbv, 0, (size_t)nt * sizeof(double));
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvhs = calc_lvhaec(nlat, nlon);
   double *wvhs = (double *)R_alloc(lvhs, sizeof(double));
   int ierror = 0;
@@ -922,8 +941,10 @@ SEXP c_uv2sfvp(SEXP s_u, SEXP s_v, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   if (grid_type == 0) {
@@ -982,8 +1003,10 @@ SEXP c_sfvp2uv(SEXP s_sf, SEXP s_vp, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvhs = calc_lvhaec(nlat, nlon);
   double *wvhs = (double *)R_alloc(lvhs, sizeof(double));
   int ierror = 0;
@@ -1038,8 +1061,10 @@ SEXP c_grads(SEXP s_z, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvhs = calc_lvhaec(nlat, nlon);
   double *wvhs = (double *)R_alloc(lvhs, sizeof(double));
   int ierror = 0;
@@ -1094,8 +1119,10 @@ SEXP c_igrads(SEXP s_gzx, SEXP s_gzy, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   if (grid_type == 0) {
@@ -1142,11 +1169,12 @@ SEXP c_laps(SEXP s_z, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
-  memset(zlapm, 0, n_grid * sizeof(double));
   if (grid_type == 0) {
     int lshsec = calc_lshaec(nlat, nlon);
     double *wshsec = (double *)R_alloc(lshsec, sizeof(double));
@@ -1189,11 +1217,15 @@ SEXP c_ilaps(SEXP s_zlap, SEXP s_zlmbda, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
   double *zm = (double *)R_alloc(n_grid, sizeof(double));
   double *gwork = (double *)R_alloc((size_t)nlon * (size_t)nlat, sizeof(double));
   double *pertrb = (double *)R_alloc(nt, sizeof(double));
+  /* islapec/islapgc leave pertrb(k) unset when xlmbda(k) == 0 */
+  memset(pertrb, 0, (size_t)nt * sizeof(double));
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int ierror = 0;
 
   if (grid_type == 0) {
@@ -1243,8 +1275,10 @@ SEXP c_vlap_op(SEXP s_u, SEXP s_v, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lvhs = calc_lvhaec(nlat, nlon);
   double *wvhs = (double *)R_alloc(lvhs, sizeof(double));
   int ierror = 0;
@@ -1313,8 +1347,10 @@ SEXP c_lderuv(SEXP s_u, SEXP s_v, SEXP s_nlon, SEXP s_nlat, SEXP s_nt,
 
   int ldwork = calc_ldwork(nlat);
   double *dwork = (double *)R_alloc(ldwork, sizeof(double));
+  memset(dwork, 0, (size_t)ldwork * sizeof(double));
   int lwork = calc_lwork(nlat, nlon, nt);
   double *work = (double *)R_alloc(lwork, sizeof(double));
+  memset(work, 0, (size_t)lwork * sizeof(double)); /* legin1 reads unset pmn entries (x 0) */
   int lwvts = calc_lvhaec(nlat, nlon);
   double *wvts = (double *)R_alloc(lwvts, sizeof(double));
   int ierror = 0;
